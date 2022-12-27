@@ -6,7 +6,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
-	"os"
+	"producer/helper"
 	"producer/producer/producer_structs"
 	"producer/structs"
 	"strings"
@@ -15,11 +15,6 @@ import (
 
 	"github.com/Shopify/sarama"
 )
-
-type Message struct {
-	Id    string  `json:"id"`
-	Value float64 `json:"value"`
-}
 
 var (
 	brokers        = "0.0.0.0:8097"
@@ -37,38 +32,12 @@ func createConfig() *sarama.Config {
 	return config
 }
 
-func loadCommonConfiguration(file string) (common structs.CommonConfig) {
-	configFile, err := os.Open(file)
-	defer configFile.Close()
-	if err != nil {
-		log.Printf("Error in opening common config file. Error: [%v]", err)
-		return
-	}
-	jsonParser := json.NewDecoder(configFile)
-	jsonParser.Decode(&common)
-
-	return common
-}
-
-func loadProducerConfiguration(file string) (common producer_structs.ProducerConfig) {
-	configFile, err := os.Open(file)
-	defer configFile.Close()
-	if err != nil {
-		log.Printf("Error in opening producer config file. Error: [%v]", err)
-		return
-	}
-	jsonParser := json.NewDecoder(configFile)
-	jsonParser.Decode(&common)
-
-	return common
-}
-
 func main() {
 	// load common config and producer config in memory
-	commonConfig = loadCommonConfiguration("config/common.json")
+	commonConfig = helper.LoadCommonConfiguration("config/common.json")
 	log.Printf("Common config: [%v]", commonConfig)
 
-	producerConfig = loadProducerConfiguration("producer/config/config.json")
+	producerConfig = helper.LoadProducerConfiguration("producer/config/config.json")
 	log.Printf("Producer Config: [%v]", producerConfig)
 
 	log.Println("Starting a new Sarama producer...")
@@ -92,6 +61,7 @@ func main() {
 				produceRecord(producer)
 				time.Sleep(time.Duration(producerConfig.MessageInterval) * time.Millisecond)
 			}
+			//break
 		}
 	}()
 
@@ -102,10 +72,14 @@ func main() {
 func getEncodedMessage() []byte {
 	// Randomly create a json object of type Message, convert and return in []byte
 	rand.Seed(time.Now().Unix())
-	return encodeMessage(Message{
+	return encodeMessage(structs.Message{
 		Id:    commonConfig.UniqueIds[rand.Intn(len(commonConfig.UniqueIds))],
-		Value: math.Round(commonConfig.ValuesMin + rand.Float64()*(commonConfig.ValuesMax-commonConfig.ValuesMin)),
+		Value: math.Round(commonConfig.ValuesMin+rand.Float64()*(commonConfig.ValuesMax-commonConfig.ValuesMin)*100) / 100,
 	})
+	//return encodeMessage(structs.Message{
+	//	Id:    "1330",
+	//	Value: 100.5,
+	//})
 }
 
 func encodeMessage(msg interface{}) []byte {

@@ -3,7 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
+	"net/http"
+	"producer/consumer/consumer_structs"
+	"producer/consumer/routes"
+	"producer/consumer/store"
+	"producer/helper"
+	"producer/structs"
 	"strings"
 	"sync"
 
@@ -15,31 +22,28 @@ type Consumer struct {
 	ready chan bool
 }
 
-type ForwardPayload struct {
-	Topic    string      `json:"topic"`
-	DateTime string      `json:"datetime"`
-	Value    interface{} `json:"value"`
-}
-
-type User struct {
-	Name  string `json:"name"`
-	Phone string `json:"phone"`
-	Email string `json:"email"`
-}
-
 // Sarama configuration options
 var (
-	brokers = "0.0.0.0:8097"
-	topic   = "user_details_1"
-	group   = "user_group_1"
-	oldest  = true
+	brokers        = "0.0.0.0:8097"
+	topic          = "user_details_1"
+	group          = "user_group_1"
+	oldest         = true
+	commonConfig   structs.CommonConfig
+	consumerConfig consumer_structs.ConsumerConfig
+	storageSvc     store.StorageService
 )
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	log.Println("Starting a new Sarama consumer...")
+	// TODO: get filenames from consts
+	commonConfig = helper.LoadCommonConfiguration("config/common.json")
+	consumerConfig = helper.LoadConsumerConfiguration("consumer/config/config.json")
+	storageSvc = store.StorageService{
+		ConsumerConfig: consumerConfig,
+		CommonConfig:   commonConfig,
+	}
 	config := sarama.NewConfig()
 	config.Consumer.Group.Rebalance.GroupStrategies = []sarama.BalanceStrategy{sarama.BalanceStrategyRoundRobin}
 	if oldest {
@@ -56,6 +60,17 @@ func main() {
 		log.Panicf("Error creating consumer group client: %v", err)
 	}
 
+	// start http server
+	routes.RegisterRoutes()
+
+	fmt.Printf("Starting server at port 8080...\n")
+	go func() {
+		if err := http.ListenAndServe(":8080", nil); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	log.Println("Starting a new Sarama consumer...")
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -113,28 +128,18 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 }
 
 func processMessage(message *sarama.ConsumerMessage) error {
-	var userValue User
-	if err := json.Unmarshal(message.Value, &userValue); err != nil {
-		log.Printf("Consumer: Error in formatting received message. Error: [%v]", err)
+	var consumedMessage structs.Message
+	if err := json.Unmarshal(message.Value, &consumedMessage); err != nil {
+		log.Printf("Consumer: Error in formatting consumed message. Error: [%v]", err)
+		return err
+	}
+	log.Printf("Message consumed: [%v]", consumedMessage)
+
+	// Save consumed message in badger KV store
+	if err := storageSvc.SaveConsumedMessage(consumedMessage); err != nil {
+		log.Printf("Consumer: Error processing consumed message. Error: [%v]", err)
 		return err
 	}
 
-	payload := ForwardPayload{
-		Topic:    message.Topic,
-		DateTime: message.Timestamp.String(),
-		Value:    userValue,
-	}
-
-	if err := postMessage(payload); err != nil {
-		log.Printf("Consumer. Error in sending msg in `abc` api. Error: [%v]", err)
-		return err
-	}
-
-	return nil
-}
-
-func postMessage(payload ForwardPayload) error {
-	// Send the payload in a POST request to `abc` api.
-	log.Printf("Here for post message! Message: [%v]", payload)
 	return nil
 }

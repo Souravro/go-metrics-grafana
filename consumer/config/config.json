@@ -1,3 +1,4 @@
 {
-    "app_name": "consumer"
+    "app_name": "consumer",
+    "badger_temp_dir": "badger_temp_dir"
 }
