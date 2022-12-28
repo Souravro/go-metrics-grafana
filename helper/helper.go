@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"producer/consumer/consumer_structs"
+	"producer/dashboard/dashboard_structs"
 	"producer/producer/producer_structs"
 	"producer/structs"
 )
@@ -73,4 +74,26 @@ func LoadProducerConfiguration(file string) (pConfig producer_structs.ProducerCo
 	}
 
 	return pConfig
+}
+
+func LoadDashboardConfiguration(file string) (dConfig dashboard_structs.DashboardConfig) {
+	configFile, err := os.Open(file)
+	defer func(configFile *os.File) {
+		err := configFile.Close()
+		if err != nil {
+			log.Printf("Error in closing dashboard config file. Error: [%v]", err)
+		}
+	}(configFile)
+	if err != nil {
+		log.Printf("Error in opening dashboard config file. Error: [%v]", err)
+		return
+	}
+	jsonParser := json.NewDecoder(configFile)
+	er := jsonParser.Decode(&dConfig)
+	if er != nil {
+		log.Printf("Error in json decoding dashboard config. Error: [%v]", er)
+		return
+	}
+
+	return dConfig
 }

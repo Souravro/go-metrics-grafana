@@ -1,4 +1,4 @@
 {
     "app_name": "producer",
-    "message_interval": 20
+    "message_interval": 100
 }

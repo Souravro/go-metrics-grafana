@@ -59,7 +59,6 @@ function createTopic() {
                --replication-factor $replication_factor
 }
 
-# main
 if [ $1 == "create" ]; then
    createContainers
 elif [ $1 == "remove" ]; then

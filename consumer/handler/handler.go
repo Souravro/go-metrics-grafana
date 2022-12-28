@@ -6,14 +6,11 @@ import (
 	"net/http"
 	"producer/consumer/consumer_structs"
 	"producer/consumer/store"
-	"producer/helper"
 	"producer/structs"
 )
 
 var (
-	commonConfig   structs.CommonConfig
-	consumerConfig consumer_structs.ConsumerConfig
-	storageSvc     store.StorageService
+	storageSvc *store.StorageService
 )
 
 func GetValueForId(w http.ResponseWriter, r *http.Request) {
@@ -69,13 +66,7 @@ func GetValueForId(w http.ResponseWriter, r *http.Request) {
 }
 
 func getValue(id string) (structs.Message, error) {
-	commonConfig = helper.LoadCommonConfiguration("config/common.json")
-	consumerConfig = helper.LoadConsumerConfiguration("consumer/config/config.json")
-
-	storageSvc = store.StorageService{
-		ConsumerConfig: consumerConfig,
-		CommonConfig:   commonConfig,
-	}
+	storageSvc = store.GetService()
 	respMessage, err := storageSvc.GetValue(id)
 	if err != nil {
 		log.Printf("consumer.GetValueForId Error in getting value for id: [%v]. Error: [%v]", id, err)

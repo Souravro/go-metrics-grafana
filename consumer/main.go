@@ -4,12 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/dgraph-io/badger"
 	"log"
 	"net/http"
-	"producer/consumer/consumer_structs"
 	"producer/consumer/routes"
 	"producer/consumer/store"
-	"producer/helper"
 	"producer/structs"
 	"strings"
 	"sync"
@@ -24,26 +23,28 @@ type Consumer struct {
 
 // Sarama configuration options
 var (
-	brokers        = "0.0.0.0:8097"
-	topic          = "user_details_1"
-	group          = "user_group_1"
-	oldest         = true
-	commonConfig   structs.CommonConfig
-	consumerConfig consumer_structs.ConsumerConfig
-	storageSvc     store.StorageService
+	brokers    = "0.0.0.0:8097"
+	topic      = "user_details_1"
+	group      = "user_group_1"
+	oldest     = true
+	storageSvc *store.StorageService
 )
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// TODO: get filenames from consts
-	commonConfig = helper.LoadCommonConfiguration("config/common.json")
-	consumerConfig = helper.LoadConsumerConfiguration("consumer/config/config.json")
-	storageSvc = store.StorageService{
-		ConsumerConfig: consumerConfig,
-		CommonConfig:   commonConfig,
+	if err := store.InitiateStorageService(); err != nil {
+		log.Fatalf("Consumer. Error in initiating storage service. Error: [%v]", err)
 	}
+	storageSvc = store.GetService()
+	defer func(Db *badger.DB) {
+		err := Db.Close()
+		if err != nil {
+			log.Printf("Consumer. Error in closing DB connection. Error: [%v]", err)
+		}
+	}(storageSvc.Db)
+
 	config := sarama.NewConfig()
 	config.Consumer.Group.Rebalance.GroupStrategies = []sarama.BalanceStrategy{sarama.BalanceStrategyRoundRobin}
 	if oldest {
@@ -60,9 +61,10 @@ func main() {
 		log.Panicf("Error creating consumer group client: %v", err)
 	}
 
-	// start http server
+	// Register http routes
 	routes.RegisterRoutes()
 
+	// Start http server
 	fmt.Printf("Starting server at port 8080...\n")
 	go func() {
 		if err := http.ListenAndServe(":8080", nil); err != nil {

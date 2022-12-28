@@ -71,7 +71,7 @@ func main() {
 
 func getEncodedMessage() []byte {
 	// Randomly create a json object of type Message, convert and return in []byte
-	rand.Seed(time.Now().Unix())
+	rand.Seed(time.Now().UnixNano())
 	return encodeMessage(structs.Message{
 		Id:    commonConfig.UniqueIds[rand.Intn(len(commonConfig.UniqueIds))],
 		Value: math.Round(commonConfig.ValuesMin+rand.Float64()*(commonConfig.ValuesMax-commonConfig.ValuesMin)*100) / 100,
