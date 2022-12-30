@@ -1,19 +1,20 @@
 package main
 
 import (
+	"consumer/consumer_structs"
+	"consumer/routes"
+	"consumer/store"
 	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/dgraph-io/badger"
 	"log"
 	"net/http"
-	"producer/consumer/routes"
-	"producer/consumer/store"
-	"producer/structs"
 	"strings"
 	"sync"
 
 	"github.com/Shopify/sarama"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Consumer represents a Sarama consumer group consumer
@@ -63,6 +64,9 @@ func main() {
 
 	// Register http routes
 	routes.RegisterRoutes()
+
+	// Prometheus metric
+	http.Handle("/metrics", promhttp.Handler())
 
 	// Start http server
 	fmt.Printf("Starting server at port 8080...\n")
@@ -130,7 +134,7 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 }
 
 func processMessage(message *sarama.ConsumerMessage) error {
-	var consumedMessage structs.Message
+	var consumedMessage consumer_structs.Message
 	if err := json.Unmarshal(message.Value, &consumedMessage); err != nil {
 		log.Printf("Consumer: Error in formatting consumed message. Error: [%v]", err)
 		return err

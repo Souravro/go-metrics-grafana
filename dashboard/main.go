@@ -2,20 +2,21 @@ package main
 
 import (
 	"context"
+	"dashboard/dashboard_structs"
+	"dashboard/helper"
+	"fmt"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"io"
 	"log"
 	"math/rand"
 	"net/http"
-	"producer/dashboard/dashboard_structs"
-	"producer/helper"
-	"producer/structs"
+	"os"
 	"sync"
 	"time"
 )
 
 var (
 	dashboardConfig dashboard_structs.DashboardConfig
-	commonConfig    structs.CommonConfig
 )
 
 const (
@@ -27,11 +28,19 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dashboardConfig = helper.LoadDashboardConfiguration("dashboard/config/config.json")
+	dashboardConfig = helper.LoadDashboardConfiguration(os.Getenv("APP_HOME") + "/config/config.json")
 	log.Printf("Dashboard config: [%v]", dashboardConfig)
 
-	commonConfig = helper.LoadCommonConfiguration("config/common.json")
-	log.Printf("Common config: [%v]", commonConfig)
+	// Prometheus metric
+	http.Handle("/metrics", promhttp.Handler())
+
+	// Start http server
+	fmt.Printf("Starting server at port 2121...\n")
+	go func() {
+		if err := http.ListenAndServe(":2121", nil); err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -55,7 +64,7 @@ func main() {
 }
 
 func getRecord() error {
-	queryParam := "id=" + commonConfig.UniqueIds[rand.Intn(len(commonConfig.UniqueIds))]
+	queryParam := "id=" + dashboardConfig.UniqueIds[rand.Intn(len(dashboardConfig.UniqueIds))]
 	requestURL := dashboardConfig.DataHost + "/" + GetRecordAPI + "?" + queryParam
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
@@ -65,7 +74,7 @@ func getRecord() error {
 
 	res, er := http.DefaultClient.Do(req)
 	if er != nil {
-		log.Printf("Dashboard. Error while making API request to data host: [%v], Error: [%v]", dashboardConfig.DataHost, err)
+		log.Printf("Dashboard. Error while making API request to data host: [%v], Error: [%v]", dashboardConfig.DataHost, er)
 		return err
 	}
 

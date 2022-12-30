@@ -10,3 +10,8 @@ type Response struct {
 	Message string      `json:"message"`
 	Data    interface{} `json:"data"`
 }
+
+type Message struct {
+	Id    string  `json:"id"`
+	Value float64 `json:"value"`
+}

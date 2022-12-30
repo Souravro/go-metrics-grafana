@@ -1,12 +1,11 @@
 package handler
 
 import (
+	"consumer/consumer_structs"
+	"consumer/store"
 	"encoding/json"
 	"log"
 	"net/http"
-	"producer/consumer/consumer_structs"
-	"producer/consumer/store"
-	"producer/structs"
 )
 
 var (
@@ -65,12 +64,12 @@ func GetValueForId(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getValue(id string) (structs.Message, error) {
+func getValue(id string) (consumer_structs.Message, error) {
 	storageSvc = store.GetService()
 	respMessage, err := storageSvc.GetValue(id)
 	if err != nil {
 		log.Printf("consumer.GetValueForId Error in getting value for id: [%v]. Error: [%v]", id, err)
-		return structs.Message{}, err
+		return consumer_structs.Message{}, err
 	}
 
 	return respMessage, nil

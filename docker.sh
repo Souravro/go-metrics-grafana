@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
+function setup() {
+  PROJECT_ROOT_DIR=$(pwd)
+  PROJECT_CONTAINER_DIR=$PROJECT_ROOT_DIR/containers
+
+  export PROJECT_ROOT_DIR="$PROJECT_ROOT_DIR"
+  export PROJECT_CONTAINER_DIR="$PROJECT_CONTAINER_DIR"
+}
+
 function createContainers() {
+  #  setup
+  #  container_dir=$(echo $PROJECT_CONTAINER_DIR)
   container_dir="containers"
   # run zookeeper
   docker-compose -f $container_dir/zookeeper.yml up -d
@@ -59,6 +69,13 @@ function createTopic() {
                --replication-factor $replication_factor
 }
 
+function createMetricsContainer() {
+    container_dir="containers"
+    # run metrics
+    docker-compose -f $container_dir/metrics/metrics.yml up -d
+    sleep 0.5
+}
+
 if [ $1 == "create" ]; then
    createContainers
 elif [ $1 == "remove" ]; then
@@ -76,6 +93,8 @@ elif [ $1 == "create-topic" ]; then
       exit 0
    fi
    createTopic $2
+elif [ $1 == "metrics" ]; then
+  createMetricsContainer
 else
-   echo "Invalid argument. Expected values are 'create', 'remove' or 'create-topic'."
+   echo "Invalid argument. Expected values are 'create', 'remove', 'create-topic' or 'metrics'."
 fi

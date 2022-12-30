@@ -1,8 +1,8 @@
 package routes
 
 import (
+	"consumer/handler"
 	"net/http"
-	"producer/consumer/handler"
 )
 
 func RegisterRoutes() {
