@@ -25,4 +25,6 @@ COPY ./config/* ./config/
 
 COPY --from=builder /consumer_service .
 
+EXPOSE 8080
+
 ENTRYPOINT ["./consumer_service"]

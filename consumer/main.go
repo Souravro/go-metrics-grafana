@@ -24,7 +24,7 @@ type Consumer struct {
 
 // Sarama configuration options
 var (
-	brokers    = "0.0.0.0:8097"
+	brokers    = "broker_1:9092"
 	topic      = "user_details_1"
 	group      = "user_group_1"
 	oldest     = true
@@ -52,7 +52,7 @@ func main() {
 		config.Consumer.Offsets.Initial = sarama.OffsetOldest
 	}
 
-	// Setup a new Sarama consumer group
+	// Set up a new Sarama consumer group
 	consumer := Consumer{
 		ready: make(chan bool),
 	}
@@ -91,7 +91,7 @@ func main() {
 		consumer.ready = make(chan bool)
 	}()
 
-	<-consumer.ready // Await till the consumer has been set up
+	<-consumer.ready // wait till the consumer has been set up
 	log.Println("Sarama consumer up and running!...")
 
 	select {

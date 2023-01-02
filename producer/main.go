@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	brokers        = "0.0.0.0:8097"
+	brokers        = "broker_1:9092"
 	topic          = "user_details_1"
 	producerConfig producer_structs.ProducerConfig
 )
