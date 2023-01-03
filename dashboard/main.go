@@ -5,6 +5,7 @@ import (
 	"dashboard/dashboard_structs"
 	"dashboard/helper"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"io"
 	"log"
@@ -15,13 +16,22 @@ import (
 	"time"
 )
 
-var (
-	dashboardConfig dashboard_structs.DashboardConfig
-)
-
 const (
 	GetRecordAPI = "getValueForId"
 )
+
+var (
+	dashboardConfig dashboard_structs.DashboardConfig
+	idApiSummary    = prometheus.NewSummaryVec(prometheus.SummaryOpts{
+		Namespace: "dashboard",
+		Name:      "id_api_latency",
+		Help:      "Latency for " + GetRecordAPI + " api, initiating from dashboard_service",
+	}, []string{"id"})
+)
+
+func registerPrometheusMetrics() {
+	prometheus.MustRegister(idApiSummary)
+}
 
 func main() {
 	log.Println("Starting dashboard application...")
@@ -41,6 +51,9 @@ func main() {
 			log.Fatal(err)
 		}
 	}()
+
+	// Register Prometheus custom metrics
+	registerPrometheusMetrics()
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -64,7 +77,11 @@ func main() {
 }
 
 func getRecord() error {
-	queryParam := "id=" + dashboardConfig.UniqueIds[rand.Intn(len(dashboardConfig.UniqueIds))]
+	startTime := time.Now()
+	elapsedTime := time.Since(startTime).Seconds()
+
+	idValue := dashboardConfig.UniqueIds[rand.Intn(len(dashboardConfig.UniqueIds))]
+	queryParam := "id=" + idValue
 	requestURL := dashboardConfig.DataHost + "/" + GetRecordAPI + "?" + queryParam
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
@@ -85,6 +102,8 @@ func getRecord() error {
 	}
 
 	log.Printf("Dashboard. Response: [%v]", string(resBody))
+
+	idApiSummary.WithLabelValues(idValue).Observe(elapsedTime)
 
 	return nil
 }

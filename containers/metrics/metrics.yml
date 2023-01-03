@@ -17,8 +17,6 @@ services:
       - /etc/prometheus:/etc/prometheus
       - prometheus-data:/prometheus
     restart: unless-stopped
-    networks:
-      - communication_bridge
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
   grafana:
@@ -29,8 +27,3 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
     restart: unless-stopped
-    networks:
-      - communication_bridge
-networks:
-  communication_bridge:
-    external: true

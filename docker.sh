@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 function createContainers() {
-  # TODO: add prometheus and grafana containers
   # this function creates zookeeper, brokers and kafdrop containers and assigns a custom made network to each
   container_dir="containers"
   local_bridge="communication_bridge"
@@ -30,9 +29,45 @@ function createContainers() {
   docker network connect $local_bridge kafdrop
 
   # start application containers: consumer, producer, dashboard - in that order
-  make -C consumer/
-  make -C producer/
-  make -C dashboard/
+  createApplicationContainers
+
+  # create metrics containers
+  createMetricsContainer
+}
+
+function createApplicationContainers() {
+    make -C consumer/
+    make -C producer/
+    make -C dashboard/
+}
+
+function createMetricsContainer() {
+    metrics_dir="containers/metrics"
+    local_bridge="communication_bridge"
+    # run metrics
+    docker-compose -f $metrics_dir/metrics.yml up -d
+    sleep 0.5
+    docker network connect $local_bridge prometheus
+    docker network connect $local_bridge grafana
+}
+
+function removeApplicationContainers() {
+    # remove producer_service
+    docker rm -f producer_service
+
+    # remove dashboard_service
+    docker rm -f dashboard_service
+
+    # remove consumer_service
+    docker rm -f consumer_service
+}
+
+function removeMetricsContainers() {
+  # remove prometheus
+  docker rm -f prometheus
+
+  # remove grafana
+  docker rm -f grafana
 }
 
 function removeContainers() {
@@ -48,14 +83,11 @@ function removeContainers() {
   # remove kafkadrop
   docker rm -f kafdrop
 
-  # remove producer_service
-  docker rm -f producer_service
+  # remove application containers
+  removeApplicationContainers
 
-  # remove dashboard_service
-  docker rm -f dashboard_service
-
-  # remove consumer_service
-  docker rm -f consumer_service
+  # remove metrics containers
+  removeMetricsContainers
 }
 
 function createTopic() {
@@ -86,13 +118,6 @@ function createTopic() {
                --replication-factor $replication_factor
 }
 
-function createMetricsContainer() {
-    container_dir="containers"
-    # run metrics
-    docker-compose -f $container_dir/metrics/metrics.yml up -d
-    sleep 0.5
-}
-
 if [ $1 == "create" ]; then
    createContainers
 elif [ $1 == "remove" ]; then
@@ -110,8 +135,10 @@ elif [ $1 == "create-topic" ]; then
       exit 0
    fi
    createTopic $2
-elif [ $1 == "metrics" ]; then
-  createMetricsContainer
+elif [ $1 == "create-application" ]; then
+  createApplicationContainers
+elif [ $1 == "remove-application" ]; then
+  removeApplicationContainers
 else
    echo "Invalid argument. Expected values are 'create', 'remove', 'create-topic' or 'metrics'."
 fi
