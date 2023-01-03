@@ -6,9 +6,9 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"os"
 	"producer/helper"
-	"producer/producer/producer_structs"
-	"producer/structs"
+	"producer/producer_structs"
 	"strings"
 	"sync"
 	"time"
@@ -17,10 +17,13 @@ import (
 )
 
 var (
-	brokers        = "0.0.0.0:8097"
+	brokers        = "broker_1:9092"
 	topic          = "user_details_1"
 	producerConfig producer_structs.ProducerConfig
-	commonConfig   structs.CommonConfig
+)
+
+const (
+	ProducerConfigFilename = "config.json"
 )
 
 func createConfig() *sarama.Config {
@@ -33,11 +36,7 @@ func createConfig() *sarama.Config {
 }
 
 func main() {
-	// load common config and producer config in memory
-	commonConfig = helper.LoadCommonConfiguration("config/common.json")
-	log.Printf("Common config: [%v]", commonConfig)
-
-	producerConfig = helper.LoadProducerConfiguration("producer/config/config.json")
+	producerConfig = helper.LoadProducerConfiguration(os.Getenv("APP_HOME") + "/config/" + ProducerConfigFilename)
 	log.Printf("Producer Config: [%v]", producerConfig)
 
 	log.Println("Starting a new Sarama producer...")
@@ -72,9 +71,9 @@ func main() {
 func getEncodedMessage() []byte {
 	// Randomly create a json object of type Message, convert and return in []byte
 	rand.Seed(time.Now().UnixNano())
-	return encodeMessage(structs.Message{
-		Id:    commonConfig.UniqueIds[rand.Intn(len(commonConfig.UniqueIds))],
-		Value: math.Round(commonConfig.ValuesMin+rand.Float64()*(commonConfig.ValuesMax-commonConfig.ValuesMin)*100) / 100,
+	return encodeMessage(producer_structs.Message{
+		Id:    producerConfig.UniqueIds[rand.Intn(len(producerConfig.UniqueIds))],
+		Value: math.Round(producerConfig.ValuesMin+rand.Float64()*(producerConfig.ValuesMax-producerConfig.ValuesMin)*100) / 100,
 	})
 	//return encodeMessage(structs.Message{
 	//	Id:    "1330",

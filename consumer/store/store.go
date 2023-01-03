@@ -1,12 +1,12 @@
 package store
 
 import (
+	"consumer/consumer_structs"
+	"consumer/helper"
 	"fmt"
 	"github.com/dgraph-io/badger"
 	"log"
-	"producer/consumer/consumer_structs"
-	"producer/helper"
-	"producer/structs"
+	"os"
 	"strconv"
 )
 
@@ -16,7 +16,6 @@ var (
 
 type StorageService struct {
 	ConsumerConfig consumer_structs.ConsumerConfig
-	CommonConfig   structs.CommonConfig
 	Db             *badger.DB
 }
 
@@ -25,9 +24,7 @@ func GetService() *StorageService {
 }
 
 func InitiateStorageService() error {
-	// TODO: get filenames from consts
-	commonConfig := helper.LoadCommonConfiguration("config/common.json")
-	consumerConfig := helper.LoadConsumerConfiguration("consumer/config/config.json")
+	consumerConfig := helper.LoadConsumerConfiguration(os.Getenv("APP_HOME") + "/config/config.json")
 	db, err := InitiateBadgerDB(consumerConfig)
 	if err != nil {
 		log.Printf("Consumer.InitiateStorageService. Error: [%v]", err)
@@ -36,7 +33,6 @@ func InitiateStorageService() error {
 
 	storageService = StorageService{
 		ConsumerConfig: consumerConfig,
-		CommonConfig:   commonConfig,
 		Db:             db,
 	}
 
@@ -53,7 +49,7 @@ func InitiateBadgerDB(consumerConfig consumer_structs.ConsumerConfig) (*badger.D
 	return db, nil
 }
 
-func (s *StorageService) SaveConsumedMessage(message structs.Message) error {
+func (s *StorageService) SaveConsumedMessage(message consumer_structs.Message) error {
 	key := []byte(message.Id)
 	value := []byte(fmt.Sprintf("%.2f", message.Value))
 
@@ -91,8 +87,8 @@ func (s *StorageService) SaveConsumedMessage(message structs.Message) error {
 	return nil
 }
 
-func (s *StorageService) GetValue(id string) (structs.Message, error) {
-	var message structs.Message
+func (s *StorageService) GetValue(id string) (consumer_structs.Message, error) {
+	var message consumer_structs.Message
 	txn := s.Db.NewTransaction(false)
 	defer txn.Discard()
 
@@ -100,11 +96,11 @@ func (s *StorageService) GetValue(id string) (structs.Message, error) {
 	entry, err := txn.Get(key)
 	if err != nil {
 		log.Printf("consumer.store.GetValue: Error in getting value from badgerDB for key [%v]. Error: [%v]", id, err)
-		return structs.Message{}, err
+		return consumer_structs.Message{}, err
 	}
 	if err := txn.Commit(); err != nil {
 		log.Printf("consumer.store.GetValue: Error in committing KV read in badger db. Error: [%v]", err)
-		return structs.Message{}, err
+		return consumer_structs.Message{}, err
 	}
 
 	value, _ := entry.ValueCopy(nil)
@@ -112,7 +108,7 @@ func (s *StorageService) GetValue(id string) (structs.Message, error) {
 	valueFloat, gErr := strconv.ParseFloat(string(value), 64)
 	if gErr != nil {
 		log.Printf("consumer.store.GetValue: Error in converting []byte to float. Error: [%v]", gErr)
-		return structs.Message{}, gErr
+		return consumer_structs.Message{}, gErr
 	}
 
 	message.Id = id

@@ -1,5 +1,6 @@
 {
   "app_name": "dashboard",
-  "data_host": "http://localhost:8080",
-  "request_interval": 200
+  "data_host": "http://consumer_service:8080",
+  "request_interval": 200,
+  "unique_ids": ["123", "234", "345", "456", "567", "678", "789", "890", "901"]
 }

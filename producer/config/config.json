@@ -1,4 +1,7 @@
 {
     "app_name": "producer",
-    "message_interval": 100
+    "message_interval": 100,
+    "unique_ids": ["123", "234", "345", "456", "567", "678", "789", "890", "901"],
+    "values_min": 10.50,
+    "values_max": 100
 }
