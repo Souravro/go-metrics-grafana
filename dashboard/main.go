@@ -78,7 +78,6 @@ func main() {
 
 func getRecord() error {
 	startTime := time.Now()
-	elapsedTime := time.Since(startTime).Seconds()
 
 	idValue := dashboardConfig.UniqueIds[rand.Intn(len(dashboardConfig.UniqueIds))]
 	queryParam := "id=" + idValue
@@ -103,6 +102,7 @@ func getRecord() error {
 
 	log.Printf("Dashboard. Response: [%v]", string(resBody))
 
+	elapsedTime := time.Since(startTime).Seconds()
 	idApiSummary.WithLabelValues(idValue).Observe(elapsedTime)
 
 	return nil

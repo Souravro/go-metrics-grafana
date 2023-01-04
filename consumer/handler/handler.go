@@ -21,13 +21,15 @@ var (
 
 func GetValueForId(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
-	elapsedTime := time.Since(startTime).Seconds()
 
 	log.Printf("In consumer.GetValueForId handler..")
 	id := r.URL.Query().Get("id")
 	log.Printf("ID in request: [%v]", id)
 
-	defer IdApiSummary.WithLabelValues(id).Observe(elapsedTime)
+	defer func() {
+		elapsedTime := time.Since(startTime).Seconds()
+		IdApiSummary.WithLabelValues(id).Observe(elapsedTime)
+	}()
 
 	// set common header
 	w.Header().Set("content-type", "application/json")
