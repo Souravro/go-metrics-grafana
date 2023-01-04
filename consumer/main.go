@@ -2,6 +2,7 @@ package main
 
 import (
 	"consumer/consumer_structs"
+	"consumer/handler"
 	"consumer/routes"
 	"consumer/store"
 	"context"
@@ -14,6 +15,7 @@ import (
 	"sync"
 
 	"github.com/Shopify/sarama"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -24,12 +26,22 @@ type Consumer struct {
 
 // Sarama configuration options
 var (
-	brokers    = "broker_1:9092"
-	topic      = "user_details_1"
-	group      = "user_group_1"
-	oldest     = true
-	storageSvc *store.StorageService
+	brokers            = "broker_1:9092"
+	topic              = "user_details_1"
+	group              = "user_group_1"
+	oldest             = true
+	storageSvc         *store.StorageService
+	consumptionCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "consumer",
+		Name:      "message_consumed",
+		Help:      "Counter for message consumed",
+	}, []string{"id"})
 )
+
+func registerPrometheusMetrics() {
+	prometheus.MustRegister(handler.IdApiSummary)
+	prometheus.MustRegister(consumptionCounter)
+}
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -75,6 +87,9 @@ func main() {
 			log.Fatal(err)
 		}
 	}()
+
+	// Register Prometheus custom metrics
+	registerPrometheusMetrics()
 
 	log.Println("Starting a new Sarama consumer...")
 	wg := &sync.WaitGroup{}
@@ -146,6 +161,9 @@ func processMessage(message *sarama.ConsumerMessage) error {
 		log.Printf("Consumer: Error processing consumed message. Error: [%v]", err)
 		return err
 	}
+
+	// Update consumption counter metric
+	consumptionCounter.WithLabelValues(consumedMessage.Id).Inc()
 
 	return nil
 }
